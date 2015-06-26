@@ -1,50 +1,53 @@
-#!/bin/bash -xe
-test_image() {
-    IMAGE=$1
-    ./atomic uninstall ${IMAGE} || true
-    ./atomic install ${IMAGE}
-    ./atomic uninstall ${IMAGE}
-    ./atomic info ${IMAGE}
-    ./atomic run --spc ${IMAGE}
-    ./atomic run --spc ${IMAGE} /bin/ps
-    ./atomic run ${IMAGE} /bin/ps
-    ./atomic run --name=atomic_test ${IMAGE}
-    ./atomic run --name=atomic_test ${IMAGE} sleep 6000 &
-    ./atomic run --name=atomic_test ${IMAGE} ps 
-    ./atomic version ${IMAGE}
-    ./atomic version -r ${IMAGE}
-    ./atomic verify ${IMAGE}
-    ./atomic uninstall --name=atomic_test ${IMAGE}
-    ./atomic uninstall ${IMAGE}_noexist || /bin/true
-}
-test_image busybox
-test_image fedora
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
-cat > Dockerfile <<EOF
-FROM busybox
-EOF
-docker build -t atomic_busybox .
-./atomic info atomic_busybox
-./atomic version atomic_busybox
-cat > Dockerfile <<EOF
-FROM busybox
-LABEL RUN /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo RUN
-LABEL INSTALL /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo INSTALL
-LABEL UNINSTALL /usr/bin/docker run -ti --rm \${IMAGE} /bin/echo UNINSTALL
-LABEL Name Atomic Busybox
-LABEL Version 1.0
-LABEL Release 1.0
-EOF
-docker build -t atomic_busybox .
-./atomic run atomic_busybox | grep RUN
-./atomic install atomic_busybox | grep INSTALL
-./atomic version atomic_busybox | grep Atomic
-mkdir -p ./.mnt_test
-./atomic mount atomic_busybox ./.mnt_test
-ls -Z ./.mnt_test/bin/sh
-cat ./.mnt_test/etc/os-release | grep PRETTY_NAME
-./atomic unmount ./.mnt_test
-rm -r ./.mnt_test
-./atomic uninstall atomic_busybox | grep UNINSTALL
-rm -f Dockerfile
-./atomic uninstall busybox
+#
+# Test harness for the atomic CLI.
+#
+export PYTHONPATH=${PYTHONPATH:-$(pwd)}
+export WORK_DIR=$(mktemp -p $(pwd) -d -t .tmp.XXXXXXXXXX)
+export DOCKER=${DOCKER:-"/usr/bin/docker"}
+
+LOG=${LOG:-"$(pwd)/tests.log"}
+
+echo -n '' > ${LOG}
+
+cleanup () {
+    rm -rf ${WORK_DIR}
+}
+trap cleanup EXIT
+
+# Python unit tests.
+echo "UNIT TESTS:"
+set +e
+python -m unittest discover ./tests/unit
+
+if [[ "$?" -ne "0" ]]; then
+    echo "Some unit tests failed. Aborting integration tests."
+    exit 1
+fi
+set +e
+
+# CLI integration tests.
+let failures=0 || true
+printf "\nINTEGRATION TESTS:\n" | tee -a ${LOG}
+
+for tf in `find ./tests/integration/ -name test_*.sh`; do
+    printf "Running test ${tf}...\t\t"
+    printf "\n==== ${tf} ====\n" >> ${LOG}
+    if ${tf} &>> ${LOG}; then
+        printf "PASS\n";
+    else
+        printf "FAIL\n";
+        let "failures += 1"
+    fi
+done
+
+if [[ "${failures}" -eq "0" ]]; then
+    echo "ALL TESTS PASSED"
+    exit 0
+else
+    echo "Failures: ${failures}"
+    exit 1
+fi
