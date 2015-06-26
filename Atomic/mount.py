@@ -338,6 +338,26 @@ class DockerMount(Mount):
             self._cleanup_container(cinfo)
             raise de
 
+    def _mount_btrfs(self, identifier, options):
+        """
+        btrfs mount backend
+        """
+        if options:
+            raise NotImplementedError("No options support for btrfs yet.")
+        cid = self._identifier_as_cid(identifier)
+        cinfo = self.client.inspect_container(cid)
+
+        if self.live and not cinfo['State']['Running']:
+            self._cleanup_container(cinfo)
+            raise MountError('Cannot live mount non-running container.')
+
+        try:
+            Mount.mount_path('/var/lib/docker/btrfs/subvolumes/' + cid,
+                             self.mountpoint, bind=True)
+        except MountError as me:
+            self._cleanup_container(cinfo)
+            raise me
+
     def _cleanup_container(self, cinfo):
         """
         Remove a container and clean up its image if necessary.
@@ -398,3 +418,27 @@ class DockerMount(Mount):
 
         Mount._remove_thin_device(dev_name)
         self._cleanup_container(cinfo)
+
+    def _unmount_btrfs(self):
+        """
+        btrfs unmount backend
+        """
+        devname = Mount.get_dev_at_mountpoint(self.mountpoint)
+        nl = devname.split('[')
+        try:
+            if len(nl) != 2:
+                raise MountError('')
+            sl = nl[1].rsplit(']')
+            if len(sl) != 2:
+                raise MountError('')
+            sv = sl[0]
+            i = sv.find('/var/lib/docker/btrfs/subvolumes/')
+            if i == -1:
+                raise MountError('')
+            cid = sv[i::].replace('/var/lib/docker/btrfs/subvolumes/', '')
+            cinfo = self.client.inspect_container(cid)
+            Mount.unmount_path(self.mountpoint)
+            self._cleanup_container(cinfo)
+        except MountError:
+            raise MountError('Device mounted at {} is not a docker '
+                             'container.'.format(self.mountpoint))

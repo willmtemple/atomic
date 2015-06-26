@@ -21,7 +21,7 @@ trap cleanup EXIT
 # Python unit tests.
 echo "UNIT TESTS:"
 set +e
-python -m unittest discover ./tests/unit
+/usr/bin/env python2 -m unittest discover ./tests/unit
 
 if [[ "$?" -ne "0" ]]; then
     echo "Some unit tests failed. Aborting integration tests."

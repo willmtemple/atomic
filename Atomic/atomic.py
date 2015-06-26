@@ -556,7 +556,8 @@ removes all containers based on an image.
             mount.DockerMount(self.args.mountpoint,
                               self.args.live).mount(self.args.image, options)
 
-            if not self.args.no_bind:
+            driver = self.d.info()['Driver']
+            if not self.args.no_bind and driver == 'devicemapper':
                 mount.Mount.mount_path(os.path.join(self.args.mountpoint,
                                                     "rootfs"),
                                        self.args.mountpoint, bind=True)
