@@ -8,7 +8,7 @@ class TestAtomicUtil(unittest.TestCase):
     def test_image_by_name(self):
         matches = util.image_by_name('rhel7:latest')
         self.assertEqual(len(matches), 1)
-        self.assertTrue(matches[0]['Id'].startswith('65de4a13fc7c'))
+        self.assertTrue(matches[0]['Id'].startswith('e3c92c6cff35'))
 
     def test_image_by_name_glob(self):
         matches = util.image_by_name('rhel*')
@@ -19,6 +19,10 @@ class TestAtomicUtil(unittest.TestCase):
     def test_image_by_name_tag_glob(self):
         matches = util.image_by_name('fedora:*')
         self.assertTrue(len(matches) > 1)
+
+    def test_image_by_name_registry_match(self):
+        matches = util.image_by_name('*redhat*/*7')
+        self.assertTrue(len(matches) == 1)
 
     def test_image_by_name_no_match(self):
         matches = util.image_by_name('this is not a real image name')

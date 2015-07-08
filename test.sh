@@ -20,14 +20,26 @@ trap cleanup EXIT
 
 # Python unit tests.
 echo "UNIT TESTS:"
+
+COVERAGE="/usr/bin/coverage"
+if [[ ! -x "${COVERAGE}" ]]; then
+    COVERAGE="/usr/bin/coverage2"
+fi
+
 set +e
-/usr/bin/env python2 -m unittest discover ./tests/unit
+
+${COVERAGE} run --source=./Atomic/ --branch  -m unittest discover \
+	./tests/unit | tee -a ${LOG}
 
 if [[ "$?" -ne "0" ]]; then
-    echo "Some unit tests failed. Aborting integration tests."
-    exit 1
+    echo "Some unit tests failed."
 fi
-set +e
+set -e
+
+echo "Coverage report:" | tee -a ${LOG}
+
+${COVERAGE} report | tee -a ${LOG}
+${COVERAGE} html
 
 # CLI integration tests.
 let failures=0 || true
@@ -49,5 +61,6 @@ if [[ "${failures}" -eq "0" ]]; then
     exit 0
 else
     echo "Failures: ${failures}"
+    echo "See ${LOG} for more information."
     exit 1
 fi

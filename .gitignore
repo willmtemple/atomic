@@ -3,3 +3,5 @@
 *.pyc
 build
 *.log
+htmlcov
+.coverage
