@@ -1,3 +1,4 @@
+import sys
 import collections
 import docker
 import selinux
@@ -9,6 +10,16 @@ from fnmatch import fnmatch as matches
 
 ReturnTuple = collections.namedtuple('ReturnTuple',
                                      ['return_code', 'stdout', 'stderr'])
+
+
+def default_container_context():
+    if selinux.is_selinux_enabled() != 0:
+        fd = open(selinux.selinux_lxc_contexts_path())
+        for i in fd.readlines():
+            name, context = i.split("=")
+            if name.strip() == "file":
+                return context.strip("\n\" ")
+    return ""
 
 
 def image_by_name(img_name):
@@ -57,11 +68,16 @@ def subp(cmd):
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 
 
-def default_container_context():
-    if selinux.is_selinux_enabled() != 0:
-        fd = open(selinux.selinux_lxc_contexts_path())
-        for i in fd.readlines():
-            name, context = i.split("=")
-            if name.strip() == "file":
-                return context.strip("\n\" ")
-    return ""
+def write(string):
+    """
+    Write to stdout.
+    """
+    sys.stdout.write(string)
+
+
+def writeln(string, lf='\n'):
+    """
+    Write a line to stdout.
+    """
+    sys.stdout.write(string + lf)
+    sys.stdout.flush()

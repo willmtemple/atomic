@@ -8,6 +8,7 @@ import getpass
 import requests
 import pipes
 import mount
+import verify
 import selinux
 import util
 import pwd
@@ -575,7 +576,8 @@ removes all containers based on an image.
         return buf
 
     def print_verify(self):
-        self.writeOut(self.verify())
+        v = verify.DockerVerify(self.args.image)
+        v.start()
 
     def mount(self):
         if os.geteuid() != 0:
