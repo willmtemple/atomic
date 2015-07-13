@@ -8,8 +8,7 @@ from fnmatch import fnmatch as matches
 
 """Atomic Utility Module"""
 
-ReturnTuple = collections.namedtuple('ReturnTuple',
-                                     ['return_code', 'stdout', 'stderr'])
+ReturnTuple = collections.namedtuple('ReturnTuple', ['return_code', 'stdout', 'stderr'])
 
 if sys.version_info[0] < 3:
     input = raw_input
@@ -57,8 +56,7 @@ def subp(cmd):  # pragma: no cover
     Run a command as a subprocess.
     Return a triple of return code, standard out, standard err.
     """
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
     return ReturnTuple(proc.returncode, stdout=out, stderr=err)
 

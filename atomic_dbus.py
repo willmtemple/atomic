@@ -26,23 +26,26 @@ class atomic_dbus(slip.dbus.service.Object):
     The version method takes in an image name and returns its version
     information
     """
+
     @slip.dbus.polkit.require_auth("org.atomic.read")
-    @dbus.service.method("org.atomic", in_signature='asb',
-                         out_signature='aa{sv}')
+    @dbus.service.method("org.atomic", in_signature='asb', out_signature='aa{sv}')
     def version(self, images, recurse=False):
         versions = []
         for image in images:
             args = self.Args(str(image))
             args.recurse = recurse
             self.atomic.set_args(args)
-            versions.append({"Image": image,
-                             "Version": self.atomic.version()})
+            versions.append({
+                "Image": image,
+                "Version": self.atomic.version()
+            })
         return versions
 
     """
     The verify method takes in an image name and returns whether or not the
     image should be updated
     """
+
     @slip.dbus.polkit.require_auth("org.atomic.read")
     @dbus.service.method("org.atomic", in_signature='as', out_signature='av')
     def verify(self, images):
@@ -50,8 +53,10 @@ class atomic_dbus(slip.dbus.service.Object):
         for image in images:
             args = self.Args(str(image))
             self.atomic.set_args(args)
-            verifications.append({"Image": image,
-                                  "Verification": self.atomic.verify()})
+            verifications.append({
+                "Image": image,
+                "Verification": self.atomic.verify()
+            })
         return verifications
 
 

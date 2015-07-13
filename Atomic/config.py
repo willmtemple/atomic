@@ -19,6 +19,7 @@ class PulpConfig(object):
     username: <user>
     password: <pass>
     """
+
     def __init__(self):
         self.c = configparser.ConfigParser()
         self.config_file = os.path.expanduser("~/.pulp/admin.conf")
@@ -34,8 +35,7 @@ class PulpConfig(object):
         except (configparser.NoSectionError, configparser.NoOptionError):
             return None
         except ValueError as e:
-            raise ValueError("Bad Value for %s in %s. %s" %
-                             (val, self.config_file, e))
+            raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e))
 
     def _getboolean(self, section, val):
         try:
@@ -43,12 +43,15 @@ class PulpConfig(object):
         except (configparser.NoSectionError, configparser.NoOptionError):
             return True
         except ValueError as e:
-            raise ValueError("Bad Value for %s in %s. %s" %
-                             (val, self.config_file, e))
+            raise ValueError("Bad Value for %s in %s. %s" % (val, self.config_file, e))
 
     def config(self):
-        return {"url": self.url, "verify_ssl": self.verify_ssl,
-                "username": self.username, "password": self.password}
+        return {
+            "url": self.url,
+            "verify_ssl": self.verify_ssl,
+            "username": self.username,
+            "password": self.password
+        }
 
 if __name__ == '__main__':
     c = PulpConfig()

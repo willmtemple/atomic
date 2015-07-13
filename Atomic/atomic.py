@@ -29,7 +29,7 @@ def convert_size(size):
         size_name = ("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
         i = int(math.floor(math.log(size, 1000)))
         p = math.pow(1000, i)
-        s = round(size/p, 2)
+        s = round(size / p, 2)
         if s > 0:
             return '%s %s' % (s, size_name[i])
     return '0B'
@@ -46,48 +46,75 @@ def find_repo_tag(d, id):
 
 
 class Atomic(object):
-    INSTALL_ARGS = ["/usr/bin/docker", "run",
-                    "-t",
-                    "-i",
-                    "--rm",
-                    "--privileged",
-                    "-v", "/:/host",
-                    "--net=host",
-                    "--ipc=host",
-                    "--pid=host",
-                    "-e", "HOST=/host",
-                    "-e", "NAME=${NAME}",
-                    "-e", "IMAGE=${IMAGE}",
-                    "-v", "${CONFDIR}:/etc/${NAME}",
-                    "-v", "${LOGDIR}:/var/log/${NAME}",
-                    "-v", "${DATADIR}:/var/lib/${NAME}",
-                    "-e", "CONFDIR=${CONFDIR}",
-                    "-e", "LOGDIR=${LOGDIR}",
-                    "-e", "DATADIR=${DATADIR}",
-                    "--name", "${NAME}",
-                    "${IMAGE}"]
+    INSTALL_ARGS = [
+        "/usr/bin/docker",
+        "run",
+        "-t",
+        "-i",
+        "--rm",
+        "--privileged",
+        "-v",
+        "/:/host",
+        "--net=host",
+        "--ipc=host",
+        "--pid=host",
+        "-e",
+        "HOST=/host",
+        "-e",
+        "NAME=${NAME}",
+        "-e",
+        "IMAGE=${IMAGE}",
+        "-v",
+        "${CONFDIR}:/etc/${NAME}",
+        "-v",
+        "${LOGDIR}:/var/log/${NAME}",
+        "-v",
+        "${DATADIR}:/var/lib/${NAME}",
+        "-e",
+        "CONFDIR=${CONFDIR}",
+        "-e",
+        "LOGDIR=${LOGDIR}",
+        "-e",
+        "DATADIR=${DATADIR}",
+        "--name",
+        "${NAME}",
+        "${IMAGE}"
+    ]
 
-    SPC_ARGS = ["/usr/bin/docker", "run",
-                "-t",
-                "-i",
-                "--rm",
-                "--privileged",
-                "-v", "/:/host",
-                "-v", "/run:/run",
-                "-v", "/etc/localtime:/etc/localtime",
-                "--net=host",
-                "--ipc=host",
-                "--pid=host",
-                "-e", "HOST=/host",
-                "-e", "NAME=${NAME}",
-                "-e", "IMAGE=${IMAGE}",
-                "${IMAGE}"]
+    SPC_ARGS = [
+        "/usr/bin/docker",
+        "run",
+        "-t",
+        "-i",
+        "--rm",
+        "--privileged",
+        "-v",
+        "/:/host",
+        "-v",
+        "/run:/run",
+        "-v",
+        "/etc/localtime:/etc/localtime",
+        "--net=host",
+        "--ipc=host",
+        "--pid=host",
+        "-e",
+        "HOST=/host",
+        "-e",
+        "NAME=${NAME}",
+        "-e",
+        "IMAGE=${IMAGE}",
+        "${IMAGE}"
+    ]
 
-    RUN_ARGS = ["/usr/bin/docker", "create",
-                "-t",
-                "-i",
-                "--name", "${NAME}",
-                "${IMAGE}"]
+    RUN_ARGS = [
+        "/usr/bin/docker",
+        "create",
+        "-t",
+        "-i",
+        "--name",
+        "${NAME}",
+        "${IMAGE}"
+    ]
 
     def __init__(self):
         self.d = docker.Client()
@@ -155,9 +182,7 @@ class Atomic(object):
             self.args.password = getpass.getpass("Registry Password: ")
 
         if self.args.pulp:
-            return push_image_to_pulp(self.image, self.args.url,
-                                      self.args.username, self.args.password,
-                                      self.args.verify_ssl, self.d)
+            return push_image_to_pulp(self.image, self.args.url, self.args.username, self.args.password, self.args.verify_ssl, self.d)
         else:
             self.d.login(self.args.username, self.args.password)
             for line in self.d.push(self.image, stream=True):
@@ -224,9 +249,7 @@ class Atomic(object):
         return self._getconfig("Labels", [])
 
     def _interactive(self):
-        return (self._getconfig("AttachStdin", False) and
-                self._getconfig("AttachStdout", False) and
-                self._getconfig("AttachStderr", False))
+        return (self._getconfig("AttachStdin", False) and self._getconfig("AttachStdout", False) and self._getconfig("AttachStderr", False))
 
     def _running(self):
         if self._interactive():
@@ -238,38 +261,23 @@ class Atomic(object):
             return subprocess.check_call(cmd, stderr=DEVNULL)
         else:
             if self.command:
-                return subprocess.check_call(
-                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
-                    self.command,
-                    stderr=DEVNULL)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command, stderr=DEVNULL)
             else:
                 self.writeOut("Container is running")
 
     def _start(self):
         if self._interactive():
             if self.command:
-                subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
-                    stderr=DEVNULL)
-                return subprocess.check_call(
-                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
-                    self.command)
+                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             else:
-                return subprocess.check_call(
-                    ["/usr/bin/docker", "start", "-i", "-a", self.name],
-                    stderr=DEVNULL)
+                return subprocess.check_call(["/usr/bin/docker", "start", "-i", "-a", self.name], stderr=DEVNULL)
         else:
             if self.command:
-                subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
-                    stderr=DEVNULL)
-                return subprocess.check_call(
-                    ["/usr/bin/docker", "exec", "-t", "-i", self.name] +
-                    self.command)
+                subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
+                return subprocess.check_call(["/usr/bin/docker", "exec", "-t", "-i", self.name] + self.command)
             else:
-                return subprocess.check_call(
-                    ["/usr/bin/docker", "start", self.name],
-                    stderr=DEVNULL)
+                return subprocess.check_call(["/usr/bin/docker", "start", self.name], stderr=DEVNULL)
 
     def _inspect_image(self, image=None):
         try:
@@ -279,8 +287,7 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" %
-                          str(e))
+            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
         return None
 
     def _inspect_container(self):
@@ -289,8 +296,7 @@ class Atomic(object):
         except docker.errors.APIError:
             pass
         except requests.exceptions.ConnectionError as e:
-            raise IOError("Unable to communicate with docker daemon: %s\n" %
-                          str(e))
+            raise IOError("Unable to communicate with docker daemon: %s\n" % str(e))
         return None
 
     def _get_args(self, label):
@@ -304,8 +310,7 @@ class Atomic(object):
         inspect = self._inspect_image()
         if inspect and inspect["Id"] != self.inspect["Image"]:
             response = ""
-            sys.stdout.write(
-                "The '%(name)s' container is using an older version of the "
+            sys.stdout.write("The '%(name)s' container is using an older version of the "
                 "installed\n'%(image)s' container image. If you wish to use "
                 "the newer image,\nyou must either create a new container "
                 "with a new name or\nuninstall the '%(name)s' container."
@@ -337,9 +342,8 @@ class Atomic(object):
         else:
             if self.command:
                 raise ValueError("Container '%s' must be running before "
-                                 "executing a command into it.\nExecute the "
-                                 "following to create the container:\n%s" %
-                                 (self.name, self.container_run_command()))
+                    "executing a command into it.\nExecute the "
+                    "following to create the container:\n%s" % (self.name, self.container_run_command()))
 
         # Container does not exist
         self.inspect = self._inspect_image()
@@ -366,9 +370,7 @@ class Atomic(object):
             self.writeOut(cmd)
 
             if missing_RUN:
-                subprocess.check_call(cmd, env=self.cmd_env,
-                                      shell=True, stderr=DEVNULL,
-                                      stdout=DEVNULL)
+                subprocess.check_call(cmd, env=self.cmd_env, shell=True, stderr=DEVNULL, stdout=DEVNULL)
                 return self._start()
 
         subprocess.check_call(cmd, env=self.cmd_env, shell=True)
@@ -378,8 +380,7 @@ class Atomic(object):
         if self.inspect is None:
             self.inspect = self._inspect_image()
             if self.inspect is None:
-                raise ValueError("Container/Image '%s' does not exists" %
-                                 self.name)
+                raise ValueError("Container/Image '%s' does not exists" % self.name)
 
         args = self._get_args("STOP")
         if args:
@@ -449,11 +450,13 @@ class Atomic(object):
 
     @property
     def cmd_env(self):
-        env = {'NAME': self.name,
-               'IMAGE': self.image,
-               'CONFDIR': "/etc/%s" % self.name,
-               'LOGDIR': "/var/log/%s" % self.name,
-               'DATADIR': "/var/lib/%s" % self.name}
+        env = {
+            'NAME': self.name,
+            'IMAGE': self.image,
+            'CONFDIR': "/etc/%s" % self.name,
+            'LOGDIR': "/var/log/%s" % self.name,
+            'DATADIR': "/var/lib/%s" % self.name
+        }
 
         if self.args.opt1:
             env['OPT1'] = self.args.opt1
@@ -527,18 +530,24 @@ class Atomic(object):
                 self.d.remove_image(i, force=True)
             return
 
-        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" %
-                      ("REPOSITORY", "TAG", "IMAGE ID", "CREATED",
-                       "VIRTUAL SIZE"))
+        self.writeOut(" %-25s %-19s %.12s            %-19s %-10s" % (
+            "REPOSITORY",
+            "TAG",
+            "IMAGE ID",
+            "CREATED",
+            "VIRTUAL SIZE"
+        ))
 
         for image in self.d.images():
             repo, tag = image["RepoTags"][0].split(":")
-            self.writeOut(
-                "%s%-25s %-19s %.12s        %-19s %-12s" %
-                (self.dangling(repo), repo, tag, image["Id"],
-                 time.strftime("%F %H:%M",
-                               time.localtime(image["Created"])),
-                 convert_size(image["VirtualSize"])))
+            self.writeOut("%s%-25s %-19s %.12s        %-19s %-12s" % (
+                self.dangling(repo),
+                repo,
+                tag,
+                image["Id"],
+                time.strftime("%F %H:%M", time.localtime(image["Created"])),
+                convert_size(image["VirtualSize"])
+            ))
 
     def install(self):
         self.inspect = self._inspect_image()
@@ -576,11 +585,18 @@ class Atomic(object):
         image = self._inspect_image(image)
         if not image:
             raise ValueError("Image '%s' does not exist" % self.image)
-        version = ("%s-%s-%s" % (get_label("Name"), get_label("Version"),
-                                 get_label("Release"))).strip("-")
-        return({"Id": image['Id'], "Name": get_label("Name"),
-                "Version": version, "Tag": find_repo_tag(self.d, image['Id']),
-                "Parent": image['Parent']})
+        version = ("%s-%s-%s" % (
+            get_label("Name"),
+            get_label("Version"),
+            get_label("Release")
+        )).strip("-")
+        return ({
+            "Id": image['Id'],
+            "Name": get_label("Name"),
+            "Version": version,
+            "Tag": find_repo_tag(self.d, image['Id']),
+            "Parent": image['Parent']
+        })
 
     def get_layers(self):
         layers = []
@@ -595,11 +611,16 @@ class Atomic(object):
         def get_label(label):
             return self.get_label(label, image["Id"])
 
-        return {"Id": image['Id'], "Name": get_label("Name"),
-                "Version": ("%s-%s-%s" % (get_label("Name"),
-                                          get_label("Version"),
-                                          get_label("Release"))).strip(":"),
-                "Tag": image["RepoTags"][0]}
+        return {
+            "Id": image['Id'],
+            "Name": get_label("Name"),
+            "Version": ("%s-%s-%s" % (
+                get_label("Name"),
+                get_label("Version"),
+                get_label("Release")
+            )).strip(":"),
+            "Tag": image["RepoTags"][0]
+        }
 
     def get_images(self):
         if len(self._images) > 0:
@@ -623,8 +644,11 @@ class Atomic(object):
         current_name = get_label("Name")
         version = ""
         if current_name:
-            version = "%s-%s-%s" % (current_name, get_label("Version"),
-                                    get_label("Release"))
+            version = "%s-%s-%s" % (
+                current_name,
+                get_label("Version"),
+                get_label("Release")
+            )
 
         prev = ""
         name = None
@@ -638,13 +662,15 @@ class Atomic(object):
                     if i["Name"] == name:
                         if i["Version"] > layer["Version"]:
                             buf = ("Image '%s' contains a layer '%s' that is "
-                                   "out of date.\nImage version '%s' is "
-                                   "available, current version could contain "
-                                   "vulnerabilities." % (self.image,
-                                                         layer["Version"],
-                                                         i["Version"]))
+                                "out of date.\nImage version '%s' is "
+                                "available, current version could contain "
+                                "vulnerabilities." % (
+                                    self.image,
+                                    layer["Version"],
+                                    i["Version"]
+                                ))
                             buf += ("You should rebuild the '%s' image using "
-                                    "docker build." % (self.image))
+                                "docker build." % (self.image))
                             break
         return buf
 
@@ -656,14 +682,11 @@ class Atomic(object):
             raise ValueError("This command must be run as root.")
         try:
             options = [opt for opt in self.args.options.split(',') if opt]
-            mount.DockerMount(self.args.mountpoint,
-                              self.args.live).mount(self.args.image, options)
+            mount.DockerMount(self.args.mountpoint, self.args.live).mount(self.args.image, options)
 
             # only need to bind-mount on the devicemapper driver
             if self.d.info()['Driver'] == 'devicemapper':
-                mount.Mount.mount_path(os.path.join(self.args.mountpoint,
-                                                    "rootfs"),
-                                       self.args.mountpoint, bind=True)
+                mount.Mount.mount_path(os.path.join(self.args.mountpoint, "rootfs"), self.args.mountpoint, bind=True)
 
         except mount.MountError as dme:
             raise ValueError(str(dme))
@@ -675,8 +698,7 @@ class Atomic(object):
             dev = mount.Mount.get_dev_at_mountpoint(self.args.mountpoint)
 
             # If there's a bind-mount over the directory, unbind it.
-            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' \
-                    and self.d.info()['Driver'] == 'devicemapper':
+            if dev.rsplit('[', 1)[-1].strip(']') == '/rootfs' and self.d.info()['Driver'] == 'devicemapper':
                 mount.Mount.unmount_path(self.args.mountpoint)
 
             return mount.DockerMount(self.args.mountpoint).unmount()

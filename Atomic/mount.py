@@ -34,6 +34,7 @@ from fnmatch import fnmatch as matches
 
 class MountError(Exception):
     """Generic error mounting a candidate container."""
+
     def __init__(self, val):
         self.val = val
 
@@ -43,9 +44,10 @@ class MountError(Exception):
 
 class SelectionMatchError(MountError):
     """Input identifier matched multiple mount candidates."""
+
     def __init__(self, i, matches):
         self.val = ('"{0}" matched multiple items. Try one of the following:\n'
-                    '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
+            '{1}'.format(i, '\n'.join(['\t' + m for m in matches])))
 
 
 class Mount:
@@ -53,6 +55,7 @@ class Mount:
     A class which contains backend-independent methods useful for mounting and
     unmounting containers.
     """
+
     def __init__(self, mountpoint, live=False):
         """
         Constructs the Mount class with a mountpoint.
@@ -63,11 +66,11 @@ class Mount:
 
     def mount(self, identifier, options=[]):
         raise NotImplementedError('Mount subclass does not implement mount() '
-                                  'method.')
+            'method.')
 
     def unmount(self):
         raise NotImplementedError('Mount subclass does not implement unmount()'
-                                  ' method.')
+            ' method.')
 
     # LVM DeviceMapper Utility Methods
     @staticmethod
@@ -76,8 +79,7 @@ class Mount:
         Provisions an LVM device-mapper thin device reflecting,
         DM device id 'dm_id' in the docker pool.
         """
-        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size)/512,
-                                                        pool, dm_id)
+        table = '0 {0} thin /dev/mapper/{1} {2}'.format(int(size) / 512, pool, dm_id)
         cmd = ['dmsetup', 'create', name, '--table', table]
         r = util.subp(cmd)
         if r.return_code != 0:
@@ -129,8 +131,7 @@ class Mount:
         cmd.append(target)
         r = util.subp(cmd)
         if r.return_code != 0:
-            raise MountError('Could not mount docker container:\n' +
-                             ' '.join(cmd) + '\n' + r.stderr)
+            raise MountError('Could not mount docker container:\n' + ' '.join(cmd) + '\n' + r.stderr)
 
     @staticmethod
     def get_dev_at_mountpoint(mntpoint):
@@ -159,6 +160,7 @@ class DockerMount(Mount):
     A class which can be used to mount and unmount docker containers and
     images on a filesystem location.
     """
+
     def __init__(self, mountpoint, live=False):
         Mount.__init__(self, mountpoint, live)
         self.client = docker.Client()
@@ -171,11 +173,7 @@ class DockerMount(Mount):
         variable so that they can be cleaned on unmount.
         """
         try:
-            return self.client.create_container(
-                                 image=iid, command='/bin/true',
-                                 environment=['_ATOMIC_TEMP_CONTAINER'],
-                                 detach=True, mem_limit='4m',
-                                 network_disabled=True)['Id']
+            return self.client.create_container(image=iid, command='/bin/true', environment=['_ATOMIC_TEMP_CONTAINER'], detach=True, mem_limit='4m', network_disabled=True)['Id']
         except docker.errors.APIError as ex:
             raise MountError('Error creating temporary container:\n' + str(ex))
 
@@ -187,14 +185,11 @@ class DockerMount(Mount):
         so that they can be cleaned on unmount.
         """
         try:
-            iid = self.client.commit(
-                    container=cid,
-                    conf={
-                            'Labels': {
-                                'io.projectatomic.Temporary': 'true'
-                            }
-                        }
-                    )['Id']
+            iid = self.client.commit(container=cid, conf={
+                'Labels': {
+                    'io.projectatomic.Temporary': 'true'
+                }
+            })['Id']
         except docker.errors.APIError as ex:
             raise MountError(str(ex))
         return self._create_temp_container(iid)
@@ -207,13 +202,10 @@ class DockerMount(Mount):
         container and return its uuid.
         """
         def __cname_matches(container, identifier):
-            return any([n for n in container['Names']
-                        if matches(n, '/' + identifier)])
+            return any([n for n in container['Names'] if matches(n, '/' + identifier)])
 
         # Determine if identifier is a container
-        containers = [c['Id'] for c in self.client.containers(all=True)
-                      if (__cname_matches(c, identifier) or
-                          matches(c['Id'], identifier + '*'))]
+        containers = [c['Id'] for c in self.client.containers(all=True) if (__cname_matches(c, identifier) or matches(c['Id'], identifier + '*'))]
 
         if len(containers) > 1:
             raise SelectionMatchError(identifier, containers)
@@ -222,8 +214,7 @@ class DockerMount(Mount):
             return c if self.live else self._clone(c)
 
         # Determine if identifier is an image UUID
-        images = [i for i in set(self.client.images(all=True, quiet=True))
-                  if i.startswith(identifier)]
+        images = [i for i in set(self.client.images(all=True, quiet=True)) if i.startswith(identifier)]
 
         if len(images) > 1:
             raise SelectionMatchError(identifier, images)
@@ -239,7 +230,7 @@ class DockerMount(Mount):
             return self._create_temp_container(images[0]['Id'])
 
         raise MountError('{} did not match any image or container.'
-                         ''.format(identifier))
+            ''.format(identifier))
 
     @staticmethod
     def _no_gd_api_dm(cid):
@@ -254,8 +245,11 @@ class DockerMount(Mount):
         prefix = os.path.join('/var/lib/docker/overlay/', cid)
         ld_metafile = open(os.path.join(prefix, 'lower-id'))
         ld_loc = os.path.join('/var/lib/docker/overlay/', ld_metafile.read())
-        return (os.path.join(ld_loc, 'root'), os.path.join(prefix, 'upper'),
-                os.path.join(prefix, 'work'))
+        return (
+            os.path.join(ld_loc, 'root'),
+            os.path.join(prefix, 'upper'),
+            os.path.join(prefix, 'work')
+        )
 
     def mount(self, identifier, options=[]):
         """
@@ -263,15 +257,14 @@ class DockerMount(Mount):
         the host filesystem.
         """
         driver = self.client.info()['Driver']
-        driver_mount_fn = getattr(self, "_mount_" + driver,
-                                  self._unsupported_backend)
+        driver_mount_fn = getattr(self, "_mount_" + driver, self._unsupported_backend)
 
         driver_mount_fn(identifier, options)
 
     def _unsupported_backend(self, identifier='', options=[]):
         raise MountError('Atomic mount is not supported on the {} docker '
-                         'storage backend.'
-                         ''.format(self.client.info()['Driver']))
+            'storage backend.'
+            ''.format(self.client.info()['Driver']))
 
     def _default_options(self, options, default_con=None, default_options=[]):
         """
@@ -282,9 +275,7 @@ class DockerMount(Mount):
             options = default_options
         # Determines default context.
         if all([o.find('context=') == -1 for o in options]):
-            options.append('context="' +
-                           (default_con if default_con else
-                            util.default_container_context()) + '"')
+            options.append('context="' + (default_con if default_con else util.default_container_context()) + '"')
         return options
 
     def _mount_devicemapper(self, identifier, options):
@@ -296,7 +287,7 @@ class DockerMount(Mount):
 
         if self.live and options:
             raise MountError('Cannot set mount options for live container '
-                             'mount.')
+                'mount.')
 
         info = self.client.info()
 
@@ -304,12 +295,10 @@ class DockerMount(Mount):
         cinfo = self.client.inspect_container(cid)
 
         if self.live and not cinfo['State']['Running']:
-                self._cleanup_container(cinfo)
-                raise MountError('Cannot live mount non-running container.')
+            self._cleanup_container(cinfo)
+            raise MountError('Cannot live mount non-running container.')
 
-        options = self._default_options(
-                options, default_con=cinfo['MountLabel'],
-                default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
+        options = self._default_options(options, default_con=cinfo['MountLabel'], default_options=[] if self.live else ['ro', 'nosuid', 'nodev'])
 
         dm_dev_name, dm_dev_id, dm_dev_size = '', '', ''
         dm_pool = info['DriverStatus'][0][1]
@@ -328,9 +317,8 @@ class DockerMount(Mount):
         if not os.path.exists(dm_dev_path):
             if self.live:
                 raise MountError('Error: Attempted to live-mount unactivated '
-                                 'device.')
-            Mount._activate_thin_device(dm_dev_name, dm_dev_id, dm_dev_size,
-                                        dm_pool)
+                    'device.')
+            Mount._activate_thin_device(dm_dev_name, dm_dev_id, dm_dev_size, dm_pool)
 
         # XFS should get nosuid
         fstype = Mount._get_fs(dm_dev_path)
@@ -339,8 +327,7 @@ class DockerMount(Mount):
                 options.append('nosuid')
 
         try:
-            Mount.mount_path(dm_dev_path, self.mountpoint,
-                             optstring=(','.join(options)))
+            Mount.mount_path(dm_dev_path, self.mountpoint, optstring=(','.join(options)))
         except MountError as de:
             if not self.live:
                 Mount._remove_thin_device(dm_dev_name)
@@ -356,10 +343,10 @@ class DockerMount(Mount):
 
         if self.live:
             raise MountError('The OverlayFS backend does not support live '
-                             'mounts.')
+                'mounts.')
         elif 'rw' in options:
             raise MountError('The OverlayFS backend does not support '
-                             'writeable mounts.')
+                'writeable mounts.')
 
         cid = self._identifier_as_cid(identifier)
         cinfo = self.client.inspect_container(cid)
@@ -374,14 +361,20 @@ class DockerMount(Mount):
 
         options += ['ro', 'lowerdir=' + ld, 'upperdir=' + ud, 'workdir=' + wd]
         optstring = ','.join(options)
-        cmd = ['mount', '-t', 'overlay', '-o', optstring, 'overlay',
-               self.mountpoint]
+        cmd = [
+            'mount',
+            '-t',
+            'overlay',
+            '-o',
+            optstring,
+            'overlay',
+            self.mountpoint
+        ]
         status = util.subp(cmd)
 
         if status.return_code != 0:
             self._cleanup_container(cinfo)
-            raise MountError('Failed to mount OverlayFS device.\n' +
-                             status.stderr)
+            raise MountError('Failed to mount OverlayFS device.\n' + status.stderr)
 
     def _cleanup_container(self, cinfo):
         """
@@ -407,8 +400,7 @@ class DockerMount(Mount):
         Unmounts and cleans-up after a previous mount().
         """
         driver = self.client.info()['Driver']
-        driver_unmount_fn = getattr(self, "_unmount_" + driver,
-                                    self._unsupported_backend)
+        driver_unmount_fn = getattr(self, "_unmount_" + driver, self._unsupported_backend)
         driver_unmount_fn()
 
     def _unmount_devicemapper(self):
@@ -421,15 +413,14 @@ class DockerMount(Mount):
         dev_name = dev.replace('/dev/mapper/', '')
         if not dev_name.startswith('docker-'):
             raise MountError('Device mounted at {} is not a docker container.'
-                             ''.format(self.mountpoint))
+                ''.format(self.mountpoint))
 
         cid = dev_name.replace(pool.replace('pool', ''), '')
         try:
             self.client.inspect_container(cid)
         except docker.errors.APIError:
             raise MountError('Failed to associate device {0} mounted at {1} '
-                             'with any container.'.format(dev_name,
-                                                          self.mountpoint))
+                'with any container.'.format(dev_name, self.mountpoint))
 
         Mount.unmount_path(self.mountpoint)
         cinfo = self.client.inspect_container(cid)
@@ -453,12 +444,11 @@ class DockerMount(Mount):
         if r.return_code != 0:
             raise MountError('No devices mounted at that location.')
         optstring = r.stdout.strip().split('\n')[-1]
-        upperdir = [o.replace('upperdir=', '') for o in optstring.split(',')
-                    if o.startswith('upperdir=')][0]
+        upperdir = [o.replace('upperdir=', '') for o in optstring.split(',') if o.startswith('upperdir=')][0]
         cdir = upperdir.rsplit('/', 1)[0]
         if not cdir.startswith('/var/lib/docker/overlay/'):
             raise MountError('The device mounted at that location is not a '
-                             'docker container.')
+                'docker container.')
         return cdir.replace('/var/lib/docker/overlay/', '')
 
     def _unmount_overlay(self):
